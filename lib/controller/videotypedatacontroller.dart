@@ -7,8 +7,13 @@ class VideoTypeDataController extends GetxController {
   var videolist = [].obs;
   final _loading = false.obs;
   final _playarea = false.obs;
+  final _isplaying = false.obs;
+  final _chechifvideoisinitialised = false.obs;
+
   get playarea => _playarea;
   get loading => _loading;
+  get isplaying => _isplaying;
+  get chechifvideoisinitialised => _chechifvideoisinitialised;
   @override
   void onInit() {
     _loadData();
@@ -18,10 +23,26 @@ class VideoTypeDataController extends GetxController {
   void toggleplayareatotrue() {
     _playarea.value = true;
   }
+
   void toggleplayareatofalse() {
     _playarea.value = false;
   }
 
+  void toggleisplayingtotrue() {
+    _isplaying.value = true;
+  }
+
+  void toggleisplayingtofalse() {
+    _isplaying.value = false;
+  }
+
+  void togglecheckvideototrue() {
+    _chechifvideoisinitialised.value = true;
+  }
+
+  void togglecheckvideotofalse() {
+    _chechifvideoisinitialised.value = false;
+  }
 
   _loadData() async {
     _loading.value = false;

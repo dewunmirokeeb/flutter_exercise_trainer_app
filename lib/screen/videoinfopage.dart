@@ -16,9 +16,19 @@ class VideoInfoPage extends StatefulWidget {
 
 final VideoTypeDataController _controller = Get.put(VideoTypeDataController());
 
-late VideoPlayerController _videoplayercontroller;
+VideoPlayerController? _videoplayercontroller;
+int? isplayingindex;
+final nomute = (_videoplayercontroller?.value.volume ?? 0) > 0;
 
 class _VideoInfoPageState extends State<VideoInfoPage> {
+  @override
+  void dispose() {
+    _videoplayercontroller!.pause();
+    _videoplayercontroller!.dispose();
+    _videoplayercontroller = null;
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     double width = MediaQuery.of(context).size.width;
@@ -46,45 +56,58 @@ class _VideoInfoPageState extends State<VideoInfoPage> {
               children: [
                 _controller.playarea == true
                     ? Container(
-                        padding: const EdgeInsets.only(
-                          top: 50,
-                          left: 20,
-                          right: 20,
+                        padding: EdgeInsets.only(
+                          top: 30,
+                          left: _controller.playarea == true ? 0 : 20,
+                          right: _controller.playarea == true ? 0 : 20,
                         ),
-                        width: width,
-                        height: height * 0.35,
-                        color: Colors.redAccent.withOpacity(0.7),
+                        color: const Color.fromARGB(255, 99, 68, 238)
+                            .withOpacity(0.7),
                         child: Column(
                           children: [
-                            Row(
-                              children: [
-                                Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      _controller.toggleplayareatofalse();
-                                    },
-                                    child: Icon(
-                                      Icons.chevron_left,
-                                      size: 30,
-                                      color: color.AppColor.secondPageIconColor,
+                            Container(
+                              padding: const EdgeInsets.only(
+                                left: 20,
+                                right: 20,
+                              ),
+                              child: Row(
+                                children: [
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        _controller.toggleplayareatofalse();
+                                        if (_videoplayercontroller!
+                                            .value.isPlaying) {
+                                          _videoplayercontroller!.pause();
+                                        }
+                                      },
+                                      child: Icon(
+                                        Icons.chevron_left,
+                                        size: 30,
+                                        color:
+                                            color.AppColor.secondPageIconColor,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Expanded(child: Container()),
-                                Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {},
-                                    child: Icon(
-                                      Icons.info_outline,
-                                      size: 20,
-                                      color: color.AppColor.secondPageIconColor,
+                                  Expanded(child: Container()),
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {},
+                                      child: Icon(
+                                        Icons.info_outline,
+                                        size: 20,
+                                        color:
+                                            color.AppColor.secondPageIconColor,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            )
+                                ],
+                              ),
+                            ),
+                            playview(context, width, height),
+                            controlview(context),
                           ],
                         ),
                       )
@@ -150,24 +173,9 @@ class _VideoInfoPageState extends State<VideoInfoPage> {
                                     itemBuilder: (context, index) {
                                       return VideoCard(
                                         onTap: () {
-                                          _onTapVideo(int index) {
-                                            final controller =
-                                                VideoPlayerController.network(
-                                                    _controller.videolist[index]
-                                                        ["videoUr"]);
-
-                                            _videoplayercontroller = controller;
-                                            controller.initialize().then((_) {
-                                              controller.play();
-                                            });
-
-                                            debugPrint('video $index tapped');
-                                          }
+                                          _onTapVideo(index);
 
                                           _controller.toggleplayareatotrue();
-                                          debugPrint('play area is now ' +
-                                              _controller.playarea.toString());
-                                          _onTapVideo(index);
                                         },
                                         timedetails: _controller
                                             .videolist[index]["time"],
@@ -189,6 +197,158 @@ class _VideoInfoPageState extends State<VideoInfoPage> {
           );
         },
       ),
+    );
+  }
+
+  _onTapVideo(int index) {
+    _controller.togglecheckvideotofalse();
+    final controller =
+        VideoPlayerController.network(_controller.videolist[index]["videoUrl"]);
+    final old = _videoplayercontroller;
+    if (old != null) {
+      old.pause();
+    }
+    _videoplayercontroller = controller;
+
+    _videoplayercontroller!.initialize().then((_) {
+      old!.dispose();
+      isplayingindex = index;
+      _videoplayercontroller!.play();
+      _controller.togglecheckvideototrue();
+      _controller.toggleisplayingtotrue();
+      // debugPrint(_videoplayercontroller!.value.duration.toString());
+    });
+
+    debugPrint('video $index isplaying');
+  }
+
+  Widget playview(BuildContext context, double width, double height) {
+    final controller = _videoplayercontroller;
+    return _controller.chechifvideoisinitialised == true
+        ? AspectRatio(
+            aspectRatio: 16 / 10,
+            child: VideoPlayer(controller!),
+          )
+        : const AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+  }
+
+  controlview(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        TextButton.icon(
+          onPressed: () async {
+            if (nomute) {
+              _videoplayercontroller!.setVolume(0);
+            } else {
+              _videoplayercontroller!.setVolume(1);
+            }
+          },
+          icon: Icon(
+            nomute ? Icons.volume_up : Icons.volume_off,
+            size: 36,
+            color: Colors.white,
+          ),
+          label: const Text(
+            '',
+          ),
+        ),
+        TextButton.icon(
+          onPressed: () async {
+            if (isplayingindex == 0 ||
+                isplayingindex == null ||
+                _controller.videolist.isEmpty) {
+              Get.snackbar(
+                "video list",
+                "no more videos in the list",
+                snackPosition: SnackPosition.TOP,
+                icon: const Icon(
+                  Icons.face,
+                  size: 30,
+                  color: Colors.white,
+                ),
+                backgroundColor: color.AppColor.gradientSecond,
+                colorText: Colors.white,
+                maxWidth: 200,
+              );
+            } else {
+              _onTapVideo(isplayingindex! - 1);
+            }
+          },
+          icon: const Icon(
+            Icons.fast_rewind,
+            size: 36,
+            color: Colors.white,
+          ),
+          label: const Text(
+            '',
+          ),
+        ),
+        TextButton.icon(
+          onPressed: () async {
+            if (_controller.isplaying == true) {
+              if (_videoplayercontroller!.value.isPlaying) {
+                _videoplayercontroller!.pause();
+                _controller.toggleisplayingtofalse();
+              } else {
+                _onTapVideo(isplayingindex!);
+              }
+            } else {
+              if (_videoplayercontroller!.value.isPlaying == false) {
+                _videoplayercontroller!.play();
+                _controller.toggleisplayingtotrue();
+              } else {
+                _onTapVideo(isplayingindex!);
+              }
+            }
+          },
+          icon: Icon(
+            _controller.isplaying == false ||
+                    _videoplayercontroller!.value.isPlaying == false
+                ? Icons.play_arrow
+                : Icons.pause,
+            size: 36,
+            color: Colors.white,
+          ),
+          label: const Text(
+            '',
+          ),
+        ),
+        TextButton.icon(
+          onPressed: () async {
+            if (isplayingindex! + 1 == _controller.videolist.length) {
+              Get.snackbar(
+                "video list",
+                "Session completed... congrats !",
+                snackPosition: SnackPosition.TOP,
+                icon: const Icon(
+                  Icons.face,
+                  size: 30,
+                  color: Colors.white,
+                ),
+                backgroundColor: color.AppColor.gradientSecond,
+                colorText: Colors.white,
+                maxWidth: 200,
+              );
+            } else {
+              _onTapVideo(isplayingindex! + 1);
+            }
+          },
+          icon: const Icon(
+            Icons.fast_forward,
+            size: 36,
+            color: Colors.white,
+          ),
+          label: const Text(
+            '',
+          ),
+        ),
+      ],
     );
   }
 }
